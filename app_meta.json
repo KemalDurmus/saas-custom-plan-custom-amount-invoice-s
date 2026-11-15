@@ -1,0 +1,5 @@
+{
+  "app_title": "Stripe Invoice Splitter",
+  "tagline": "Upload a Stripe invoice line-items CSV and see total billed per customer, with a breakdown by metadata tag.",
+  "lang": "en"
+}

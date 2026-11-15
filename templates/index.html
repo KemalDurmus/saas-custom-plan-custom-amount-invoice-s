@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}{{ app_title }}{% endblock %}
+{% block head %}<link rel='stylesheet' href='{{ url_for("static", filename="splitter.css") }}'>{% endblock %}
+{% macro pl(n, word) %}{{ n }} {{ word }}{{ '' if n == 1 else 's' }}{% endmacro %}
+{% block content %}
+<div class='container'>
+  <div class='card'>
+    <h2>Split a Stripe invoice export by customer</h2>
+    <p class='muted'>Export invoice line items from Stripe as CSV, then upload or paste it. The file is processed in memory and is not stored. Amounts are summed as they appear in the CSV (negative amounts count as discounts), separately per currency.</p>
+    <form method='post' action='{{ url_for("feature.analyze_view") }}' enctype='multipart/form-data'>
+      <label for='csv_file'>CSV file</label>
+      <input type='file' id='csv_file' name='csv_file' accept='.csv,.txt,text/csv,text/plain'>
+      <label for='csv_text'>Or paste CSV text</label>
+      <textarea id='csv_text' name='csv_text' rows='6' placeholder='Invoice ID,Customer Email,Description,Quantity,Amount,Currency,plan (metadata)'>{{ csv_text }}</textarea>
+      <label for='tag'>Metadata column to break down by (optional)</label>
+      <input type='text' id='tag' name='tag' value='{{ tag }}' placeholder='e.g. plan or deal. Leave empty to use the first metadata column'>
+      <div class='actions'>
+        <button class='btn' type='submit'>Split invoices</button>
+        <button class='btn btn-secondary' type='submit' name='demo' value='1' formnovalidate>Try with sample data</button>
+      </div>
+    </form>
+    <p class='muted small'>Expected columns: a customer email column and an amount column. Optional: quantity, currency, invoice id, and metadata columns such as <code>plan (metadata)</code>.</p>
+  </div>
+
+  {% if result %}
+  <div class='card'>
+    <h2>Summary{% if demo %} <span class='badge'>sample data</span>{% endif %}</h2>
+    <div class='grid'>
+      {% for t in result.totals %}
+      <div class='stat'>
+        <div class='muted'>Net billed ({{ t.currency }})</div>
+        <strong>{{ t.net }}</strong>
+        <div class='muted small'>{{ pl(t.customers, 'customer') }}, {{ pl(t.items, 'line item') }}<br>Gross {{ t.gross }}, discounts {{ t.discounts }}</div>
+      </div>
+      {% endfor %}
+      <div class='stat'>
+        <div class='muted'>Rows read</div>
+        <strong>{{ result.rows }}</strong>
+        {% if result.skipped %}<div class='muted small'>{{ pl(result.skipped, 'row') }} skipped</div>{% endif %}
+      </div>
+    </div>
+    {% if result.multi_currency %}<p class='muted small'>This file has more than one currency. Totals are never added across currencies.</p>{% endif %}
+  </div>
+
+  <div class='card'>
+    <h2>Total billed per customer</h2>
+    <table class='stack'>
+      <thead><tr><th>Customer</th><th>Currency</th><th>Line items</th><th>Invoices</th><th>Quantity</th><th>Gross</th><th>Discounts</th><th>Net total</th></tr></thead>
+      <tbody>
+      {% for c in result.customers %}
+        <tr>
+          <td data-label='Customer'>{{ c.email }}</td>
+          <td data-label='Currency'>{{ c.currency }}</td>
+          <td data-label='Line items'>{{ c['items'] }}</td>
+          <td data-label='Invoices'>{{ c.invoices if c.invoices else '-' }}</td>
+          <td data-label='Quantity'>{{ c.qty }}</td>
+          <td data-label='Gross'>{{ c.gross }}</td>
+          <td data-label='Discounts'>{{ c.discounts }}</td>
+          <td data-label='Net total'><strong>{{ c.net }}</strong></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if download_uri %}<p><a class='btn btn-secondary' download='invoice-summary.csv' href='{{ download_uri }}'>Download summary CSV</a></p>{% endif %}
+  </div>
+
+  {% if result.tag_col %}
+  <div class='card'>
+    <h2>Breakdown by <code>{{ result.tag_col }}</code></h2>
+    <table class='stack'>
+      <thead><tr><th>Customer</th><th>Currency</th><th>Tag value</th><th>Line items</th><th>Net total</th></tr></thead>
+      <tbody>
+      {% for r in result.tag_rows %}
+        <tr>
+          <td data-label='Customer'>{{ r.email }}</td>
+          <td data-label='Currency'>{{ r.currency }}</td>
+          <td data-label='Tag value'>{{ r.tag }}</td>
+          <td data-label='Line items'>{{ r['items'] }}</td>
+          <td data-label='Net total'><strong>{{ r.net }}</strong></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class='muted small'>Rows without a value in this column are shown as (untagged).{% if result.metadata_cols|length > 1 %} Other metadata columns found: {{ result.metadata_cols|join(', ') }}. Type a name above to switch.{% endif %}</p>
+  </div>
+  {% elif not result.metadata_cols %}
+  <div class='card'><p class='muted'>No metadata columns were found in this CSV, so only the per-customer summary is shown.</p></div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

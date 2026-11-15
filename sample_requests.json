@@ -1,0 +1,31 @@
+[
+  {
+    "method": "GET",
+    "path": "/",
+    "form_fields": []
+  },
+  {
+    "method": "POST",
+    "path": "/analyze",
+    "form_fields": [
+      {
+        "name": "demo",
+        "value": "1"
+      }
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/analyze",
+    "form_fields": [
+      {
+        "name": "csv_text",
+        "value": "Invoice ID,Customer Email,Description,Quantity,Amount,Currency,plan (metadata)\nin_1,a@x.io,Seats,5,500.00,usd,enterprise\nin_1,a@x.io,Discount,1,-50.00,usd,enterprise\nin_2,b@y.io,Custom work,2,1200.00,usd,custom"
+      },
+      {
+        "name": "tag",
+        "value": "plan"
+      }
+    ]
+  }
+]
